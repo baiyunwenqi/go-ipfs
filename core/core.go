@@ -65,6 +65,7 @@ import (
 	smux "gx/ipfs/QmY9JXR3FupnYAYJWK9aMr9bCpqWKcToQ1tz8DVGTrHpHw/go-stream-muxer"
 	routing "gx/ipfs/QmZBH87CAPFHcc7cYmBqeSQ98zQ3SX9KUxiYgzPmLWNVKz/go-libp2p-routing"
 	mplex "gx/ipfs/QmZsejKNkeFSQe5TcmYXJ8iq6qPL1FpsP4eAA8j7RfE7xg/go-smux-multiplex"
+	autonat "gx/ipfs/Qma7kuzdE11SExUDhxToEtHfmp93S6Xz8G4Bwj7WezXy3y/go-libp2p-autonat-svc"
 	p2phost "gx/ipfs/QmahxMNoNuSsgQefo9rkpcfRFmQrMN6Q99aztKXf63K7YJ/go-libp2p-host"
 	pubsub "gx/ipfs/Qmc3BYVGtLs8y3p4uVpARWyo3Xk2oCBFF1AhYUVMPWgwUK/go-libp2p-pubsub"
 	merkledag "gx/ipfs/QmcGt25mrjuB2kKW2zhPbXVZNHc4yoTDQ65NA8m6auP2f1/go-merkledag"
@@ -135,6 +136,7 @@ type IpfsNode struct {
 	Reprovider   *rp.Reprovider      // the value reprovider system
 	IpnsRepub    *ipnsrp.Republisher
 
+	AutoNAT  *autonat.AutoNATService
 	PubSub   *pubsub.PubSub
 	PSRouter *psrouter.PubsubValueStore
 	DHT      *dht.IpfsDHT
@@ -473,12 +475,20 @@ func (n *IpfsNode) HandlePeerFound(p pstore.PeerInfo) {
 // startOnlineServicesWithHost  is the set of services which need to be
 // initialized with the host and _before_ we start listening.
 func (n *IpfsNode) startOnlineServicesWithHost(ctx context.Context, host p2phost.Host, routingOption RoutingOption, enablePubsub bool, enableIpnsps bool) error {
-	if enablePubsub || enableIpnsps {
-		cfg, err := n.Repo.Config()
+	cfg, err := n.Repo.Config()
+	if err != nil {
+		return err
+	}
+
+	if cfg.Swarm.EnableAutoNATService {
+		svc, err := autonat.NewAutoNATService(ctx, host)
 		if err != nil {
 			return err
 		}
+		n.AutoNAT = svc
+	}
 
+	if enablePubsub || enableIpnsps {
 		var service *pubsub.PubSub
 
 		var pubsubOptions []pubsub.Option

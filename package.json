@@ -592,6 +592,12 @@
       "hash": "QmTqLBwme9BusYWdACqL62NFb8WV2Q72gXLsQVfC7vmCr4",
       "name": "iptb-plugins",
       "version": "1.0.5"
+    },
+    {
+      "author": "vyzo",
+      "hash": "Qma7kuzdE11SExUDhxToEtHfmp93S6Xz8G4Bwj7WezXy3y",
+      "name": "go-libp2p-autonat-svc",
+      "version": "1.0.2"
     }
   ],
   "gxVersion": "0.10.0",
