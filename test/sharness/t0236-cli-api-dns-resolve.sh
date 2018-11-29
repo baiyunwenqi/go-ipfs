@@ -10,15 +10,35 @@ test_description="test dns resolution of api endpoint by cli"
 
 test_init_ipfs
 
-test_expect_success "can make http request against dns resolved nc server" '
-  nc -ld 5005 > nc_out &
+test_expect_success "start nc" '
+  rm -f nc_out nc_in && mkfifo nc_in nc_out
+  # 1. Abuse cat to buffer output.
+  # 2. Put cat in a subshell so we capture the PID of nc.
+  nc -k -l 5005 < nc_in > >(cat > nc_out) &
   NCPID=$!
-  go-sleep 1s && kill "$NCPID" &
-  ipfs cat /ipfs/Qmabcdef --api /dns4/localhost/tcp/5005 || true
+  echo "" > nc_in
+  while ! nc -z 127.0.0.1 5005; do
+      go-sleep 100ms
+  done
+'
+
+test_expect_success "can make http request against dns resolved nc server" '
+  cat >nc_in <<EOF
+HTTP/1.1 200 OK
+Content-Type: text/plain
+Content-Length: 1
+
+.
+EOF
+ipfs cat /ipfs/Qmabcdef --api /dns4/localhost/tcp/5005
 '
 
 test_expect_success "request was received by local nc server" '
-  grep "POST /api/v0/cat" nc_out
+  grep -q "POST /api/v0/cat" nc_out
+'
+
+test_expect_success "stop nc" '
+  kill "$NCPID"
 '
 
 test_done
